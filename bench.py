@@ -250,7 +250,7 @@ def main():
     args = parse_args()
     pipeline = DreamBoothBenchmarkPipeline(args.device, args.use_fp32)
 
-    clip_plus_unet_it_sec = pipeline.bench(args.n_steps, train_text_encoder=False, train_unet=True)
+    clip_plus_unet_it_sec = pipeline.bench(args.n_steps, train_text_encoder=True, train_unet=True)
     unet_only_it_sec = pipeline.bench(args.n_steps, train_text_encoder=False, train_unet=True)
 
     logger.info(f"CLIP+Unet: {clip_plus_unet_it_sec:.2f} it/s")
