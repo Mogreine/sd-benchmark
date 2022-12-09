@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 import torch
 import torch.utils.checkpoint
+import numpy as np
 
 from torch.utils.data import Dataset
 from diffusers import DDPMScheduler, UNet2DConditionModel
@@ -47,22 +48,22 @@ def collate_fn(examples, with_prior_preservation, tokenizer):
 class BenchmarkDataset(Dataset):
     def __init__(self, tokenizer: CLIPTokenizer, length: int):
         super().__init__()
-        self.class_sample = torch.randn(3, 256, 256)
-        self.instance_sample = torch.randn(3, 256, 256)
-        self.class_text = "a photo of a man"
-        self.instance_text = "a photo of a sks man"
         self.image_transforms = transforms.Compose(
             [
-                transforms.Resize(512, interpolation=transforms.InterpolationMode.BILINEAR),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5], [0.5]),
             ]
         )
+        self.class_sample = [self.image_transforms(x) for x in np.random.randn(200, 512, 512, 3)]
+        self.instance_sample = [self.image_transforms(x) for x in np.random.randn(200, 512, 512, 3)]
+        self.class_text = "a photo of a man"
+        self.instance_text = "a photo of a sks man"
 
         self.tokenizer = tokenizer
         self.length = length
 
-    def _prepare_sample(self, image, prompt):
+    def _prepare_sample(self, index, image, prompt):
+        image = image[index % len(image)]
         prompt = self.tokenizer(
             prompt,
             padding="do_not_pad",
@@ -77,11 +78,11 @@ class BenchmarkDataset(Dataset):
 
     def __getitem__(self, index):
         example = {}
-        image, prompt = self._prepare_sample(self.instance_sample, self.instance_text)
+        image, prompt = self._prepare_sample(index, self.instance_sample, self.instance_text)
         example["instance_images"] = image
         example["instance_prompt_ids"] = prompt
 
-        image, prompt = self._prepare_sample(self.class_sample, self.class_text)
+        image, prompt = self._prepare_sample(index, self.class_sample, self.class_text)
         example["class_images"] = image
         example["class_prompt_ids"] = prompt
 
